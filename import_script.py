@@ -1,26 +1,19 @@
 import torch
 import os
+import sys
 
+# Path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-WEIGHTS = os.path.join(BASE_DIR, "saved_weights.pth")
+sys.path.append(BASE_DIR)
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# Import model
+# Model
 from assignment_script import BaseballCNN
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = BaseballCNN().to(device)
-
-# Initialize lazy layers 
 dummy = torch.zeros(1, 3, 8, 64, 64).to(device)
 model(dummy)
 
-# Load saved weights
+# Weights
+WEIGHTS = os.path.join(BASE_DIR, "saved_weights.pth")
 model.load_state_dict(torch.load(WEIGHTS, map_location=device))
 model.eval()
-
-# Run a quick test inference
-with torch.no_grad():
-    sample = torch.zeros(1, 3, 8, 64, 64).to(device)
-    out = model(sample)
-    pred = out.argmax(1).item()
-    print(f"Predicted class: {'Moving (Pitched)' if pred == 1 else 'Stationary'}")

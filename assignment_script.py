@@ -107,54 +107,53 @@ class BaseballCNN(nn.Module):
         return x
 
 ## Training & Fitting the model
-if __name__ == "__main__":
-    dataset  = BaseballDataset(XML_PATH, VIDEO_PATH, n_frames=8)
-    train_n  = max(1, int(0.8 * len(dataset))) # 80% of samples go to training
-    train_set, val_set = random_split(dataset, [train_n, len(dataset) - train_n]) # 20% to validation
-    train_dataloader   = DataLoader(train_set, batch_size=4, shuffle=True) #shuffle=True, to randomize sample order for each epoch
-    test_dataloader    = DataLoader(val_set,   batch_size=4)
-    print(f"Total samples: {len(dataset)}")
-    print(f"Moving        : {sum(s[1] for s in dataset.samples)}")
-    print(f"Stationary    : {sum(1-s[1] for s in dataset.samples)}")
+dataset  = BaseballDataset(XML_PATH, VIDEO_PATH, n_frames=8)
+train_n  = max(1, int(0.8 * len(dataset))) # 80% of samples go to training
+train_set, val_set = random_split(dataset, [train_n, len(dataset) - train_n]) # 20% to validation
+train_dataloader   = DataLoader(train_set, batch_size=4, shuffle=True) #shuffle=True, to randomize sample order for each epoch
+test_dataloader    = DataLoader(val_set,   batch_size=4)
+print(f"Total samples: {len(dataset)}")
+print(f"Moving        : {sum(s[1] for s in dataset.samples)}")
+print(f"Stationary    : {sum(1-s[1] for s in dataset.samples)}")
 
-    # Uses GPU if available, otherwise CPU. 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model  = BaseballCNN().to(device)
+# Uses GPU if available, otherwise CPU. 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model  = BaseballCNN().to(device)
 
-    # Initialise lazy layers with one dummy forward pass
-    dummy = torch.zeros(1, 3, 8, 64, 64).to(device)
-    model(dummy)
+# Initialise lazy layers with one dummy forward pass
+dummy = torch.zeros(1, 3, 8, 64, 64).to(device)
+model(dummy)
 
-    # Fitting through 20 epoch
-    opt  = torch.optim.Adam(model.parameters(), lr=1e-3)
-    crit = nn.CrossEntropyLoss()
+# Fitting through 20 epoch
+opt  = torch.optim.Adam(model.parameters(), lr=1e-3)
+crit = nn.CrossEntropyLoss()
 
-    for epoch in range(20): #epoch 20
-        model.train()
-        total_loss, correct, total = 0, 0, 0
-        for videos, labels in train_dataloader:
-            videos, labels = videos.to(device), labels.to(device)
-            opt.zero_grad() #PyTorch accumulates gradients by default so reset them manually
-            out  = model(videos) #Forward pass — runs the batch through the model to get predictions, then computes how wrong they are.
-            loss = crit(out, labels)
-            loss.backward() #Backward pass — computes gradients via backpropagation. opt.step() uses those gradients to update the weights
-            opt.step()
-            total_loss += loss.item()
-            correct    += (out.argmax(1) == labels).sum().item() #Tracks loss and accuracy across the epoch. out.argmax(1) picks the class with the highest score.
-            total      += len(labels)
+for epoch in range(20): #epoch 20
+    model.train()
+    total_loss, correct, total = 0, 0, 0
+    for videos, labels in train_dataloader:
+        videos, labels = videos.to(device), labels.to(device)
+        opt.zero_grad() #PyTorch accumulates gradients by default so reset them manually
+        out  = model(videos) #Forward pass — runs the batch through the model to get predictions, then computes how wrong they are.
+        loss = crit(out, labels)
+        loss.backward() #Backward pass — computes gradients via backpropagation. opt.step() uses those gradients to update the weights
+        opt.step()
+        total_loss += loss.item()
+        correct    += (out.argmax(1) == labels).sum().item() #Tracks loss and accuracy across the epoch. out.argmax(1) picks the class with the highest score.
+        total      += len(labels)
 #Testing the model
-        model.eval()
-        val_correct, val_total = 0, 0
-        with torch.no_grad(): #turns off gradient computation during validation
-            for videos, labels in test_dataloader:
-                videos, labels = videos.to(device), labels.to(device)
-                val_correct += (model(videos).argmax(1) == labels).sum().item()
-                val_total   += len(labels) #Runs validation batches through the model and counts correct predictions.
+    model.eval()
+    val_correct, val_total = 0, 0
+    with torch.no_grad(): #turns off gradient computation during validation
+        for videos, labels in test_dataloader:
+            videos, labels = videos.to(device), labels.to(device)
+            val_correct += (model(videos).argmax(1) == labels).sum().item()
+            val_total   += len(labels) #Runs validation batches through the model and counts correct predictions.
 
-        print(f"Epoch {epoch+1:02d}/{20}  "
-              f"loss={total_loss/len(train_dataloader):.4f}  "
-             f"train_acc={correct/total:.2%}  "
-             f"val_acc={val_correct/max(val_total,1):.2%}")
+    print(f"Epoch {epoch+1:02d}/{20}  "
+         f"loss={total_loss/len(train_dataloader):.4f}  "
+         f"train_acc={correct/total:.2%}  "
+         f"val_acc={val_correct/max(val_total,1):.2%}")
 
 # Save weights
 WEIGHTS = r"\\JUNGMINN\Users\jungm\Documents\GitHub\econ8310-assignment3-baseball\saved_weights.pth"
