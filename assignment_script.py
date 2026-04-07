@@ -1,4 +1,4 @@
-#Importing...
+# Importing...
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -50,7 +50,7 @@ class BaseballDataset(Dataset):
                 continue #If a track has fewer visible boxes than our window size, we can't build a sample from it — skip it.
             label = 1 if sum(b['moving'] for b in boxes) > len(boxes) / 2 else 0 #Majority vote — if more than half the boxes in this track are moving=true, the whole track gets label 1 (pitched), otherwise 0 (stationary).
             for start in range(0, len(boxes) - n_frames + 1, n_frames // 2):
-                self.samples.append((boxes[:n_frames], label)) #Slides a window of 8 boxes over the track with a step of 4. One long track becomes multiple overlapping samples, giving us more training data.
+                self.samples.append((boxes[start:start + n_frames], label)) 
     
     def _load_all_frames(self, video_path):
         cap, frames = cv2.VideoCapture(video_path), [] #Opens the video file with OpenCV and initializes an empty frames list in one line.
@@ -120,9 +120,14 @@ print(f"Stationary    : {sum(1-s[1] for s in dataset.samples)}")
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model  = BaseballCNN().to(device)
 
+# Initialise lazy layers with one dummy forward pass
+dummy = torch.zeros(1, 3, 8, 64, 64).to(device)
+model(dummy)
+
 # Fitting through 20 epoch
 opt  = torch.optim.Adam(model.parameters(), lr=1e-3)
 crit = nn.CrossEntropyLoss()
+
 for epoch in range(20): #epoch 20
     model.train()
     total_loss, correct, total = 0, 0, 0
@@ -154,4 +159,3 @@ for epoch in range(20): #epoch 20
 WEIGHTS = r"\\JUNGMINN\Users\jungm\Documents\GitHub\econ8310-assignment3-baseball\saved_weights.pth"
 torch.save(model.state_dict(), WEIGHTS)
 print(f"\nWeights saved → {WEIGHTS}")
-
